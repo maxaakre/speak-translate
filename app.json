@@ -7,7 +7,8 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.maxaakre.speaktranslate"
     },
     "android": {
       "adaptiveIcon": {
@@ -20,6 +21,15 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Speak Translate listens so it can translate what you say.",
+          "speechRecognitionPermission": "Speak Translate turns your speech into text on this iPhone."
+        }
+      ]
+    ]
   }
 }
