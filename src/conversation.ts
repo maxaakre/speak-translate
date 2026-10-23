@@ -18,7 +18,7 @@ export interface ConversationState {
 }
 
 export type Action =
-  | { type: 'start'; side: Side }
+  | { type: 'start'; side: Side; turnId: number }
   | { type: 'heard'; turnId: number; text: string }
   | { type: 'translated'; turnId: number; text: string }
   | { type: 'speaking'; turnId: number }
@@ -44,11 +44,11 @@ export function initialState(top: Lang, bottom: Lang): ConversationState {
 
 export function reducer(s: ConversationState, a: Action): ConversationState {
   // Results from a cancelled turn arrive late; drop them.
-  if ('turnId' in a && a.turnId !== s.turnId) return s;
+  if (a.type !== 'start' && 'turnId' in a && a.turnId !== s.turnId) return s;
 
   switch (a.type) {
     case 'start':
-      return { ...s, top: empty(s.top), bottom: empty(s.bottom), active: a.side, phase: 'listening', turnId: s.turnId + 1 };
+      return { ...s, top: empty(s.top), bottom: empty(s.bottom), active: a.side, phase: 'listening', turnId: a.turnId };
     case 'heard':
       if (!s.active) return s;
       return { ...s, [s.active]: { ...s[s.active], text: a.text, kind: 'heard' }, phase: 'translating' };

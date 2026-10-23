@@ -9,16 +9,16 @@ describe('conversation reducer', () => {
       top: { ...base.top, text: 'old', kind: 'translation' as const },
       bottom: { ...base.bottom, text: 'old', kind: 'heard' as const },
     };
-    const s = reducer(withText, { type: 'start', side: 'bottom' });
+    const s = reducer(withText, { type: 'start', side: 'bottom', turnId: 7 });
     expect(s.active).toBe('bottom');
     expect(s.phase).toBe('listening');
-    expect(s.turnId).toBe(base.turnId + 1);
+    expect(s.turnId).toBe(7);
     expect(s.top).toEqual({ lang: 'pl', text: '', kind: null });
     expect(s.bottom).toEqual({ lang: 'sv', text: '', kind: null });
   });
 
   it('heard puts text on the active half and moves to translating', () => {
-    const started = reducer(base, { type: 'start', side: 'bottom' });
+    const started = reducer(base, { type: 'start', side: 'bottom', turnId: 1 });
     const s = reducer(started, { type: 'heard', turnId: started.turnId, text: 'Hej' });
     expect(s.bottom).toEqual({ lang: 'sv', text: 'Hej', kind: 'heard' });
     expect(s.top.text).toBe('');
@@ -26,14 +26,14 @@ describe('conversation reducer', () => {
   });
 
   it('translated puts text on the other half', () => {
-    const started = reducer(base, { type: 'start', side: 'top' });
+    const started = reducer(base, { type: 'start', side: 'top', turnId: 1 });
     const s = reducer(started, { type: 'translated', turnId: started.turnId, text: 'Hej' });
     expect(s.bottom).toEqual({ lang: 'sv', text: 'Hej', kind: 'translation' });
     expect(s.top.text).toBe('');
   });
 
   it('ignores turn actions with a stale turnId', () => {
-    const started = reducer(base, { type: 'start', side: 'bottom' });
+    const started = reducer(base, { type: 'start', side: 'bottom', turnId: 1 });
     const stale = started.turnId - 1;
     expect(reducer(started, { type: 'heard', turnId: stale, text: 'x' })).toBe(started);
     expect(reducer(started, { type: 'translated', turnId: stale, text: 'x' })).toBe(started);
@@ -43,7 +43,7 @@ describe('conversation reducer', () => {
   });
 
   it('speaking then done returns to idle with no active side', () => {
-    const started = reducer(base, { type: 'start', side: 'bottom' });
+    const started = reducer(base, { type: 'start', side: 'bottom', turnId: 1 });
     const speaking = reducer(started, { type: 'speaking', turnId: started.turnId });
     expect(speaking.phase).toBe('speaking');
     const done = reducer(speaking, { type: 'done', turnId: started.turnId });
@@ -52,7 +52,7 @@ describe('conversation reducer', () => {
   });
 
   it('message shows on the active half and goes idle', () => {
-    const started = reducer(base, { type: 'start', side: 'top' });
+    const started = reducer(base, { type: 'start', side: 'top', turnId: 1 });
     const s = reducer(started, { type: 'message', turnId: started.turnId, text: "Didn't catch that" });
     expect(s.top).toEqual({ lang: 'pl', text: "Didn't catch that", kind: 'message' });
     expect(s.phase).toBe('idle');
@@ -73,7 +73,7 @@ describe('conversation reducer', () => {
   });
 
   it('clear empties both texts', () => {
-    const started = reducer(base, { type: 'start', side: 'bottom' });
+    const started = reducer(base, { type: 'start', side: 'bottom', turnId: 1 });
     const heard = reducer(started, { type: 'heard', turnId: started.turnId, text: 'Hej' });
     const s = reducer(heard, { type: 'clear' });
     expect(s.top).toEqual({ lang: 'pl', text: '', kind: null });

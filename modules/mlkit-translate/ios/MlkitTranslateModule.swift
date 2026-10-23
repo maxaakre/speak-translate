@@ -17,6 +17,7 @@ public class MlkitTranslateModule: Module {
         options: TranslatorOptions(sourceLanguage: .english, targetLanguage: target))
       let conditions = ModelDownloadConditions(allowsCellularAccess: true, allowsBackgroundDownloading: true)
       translator.downloadModelIfNeeded(with: conditions) { error in
+        _ = translator  // Keep the translator alive until ML Kit calls back.
         if let error = error {
           promise.reject("ERR_DOWNLOAD", error.localizedDescription)
         } else {
@@ -31,6 +32,7 @@ public class MlkitTranslateModule: Module {
           sourceLanguage: TranslateLanguage(rawValue: from),
           targetLanguage: TranslateLanguage(rawValue: to)))
       translator.translate(text) { result, error in
+        _ = translator  // Keep the translator alive until ML Kit calls back.
         if let result = result {
           promise.resolve(result)
         } else {

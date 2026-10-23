@@ -35,6 +35,22 @@ function fakeServices(overrides: Partial<{ heard: string; translated: string }> 
   return services satisfies Services;
 }
 
+// Like a React component: getState only sees dispatched actions after a "render".
+function makeLaggingStore(top: Lang, bottom: Lang) {
+  let rendered = initialState(top, bottom);
+  let latest = rendered;
+  return {
+    dispatch: (a: Action) => {
+      latest = reducer(latest, a);
+    },
+    getState: () => rendered,
+    render: () => {
+      rendered = latest;
+    },
+    latest: () => latest,
+  };
+}
+
 describe('turn runner', () => {
   it('listens, translates and speaks the translation on the other half', async () => {
     const store = makeStore('pl', 'sv');
@@ -167,5 +183,36 @@ describe('turn runner', () => {
     expect(services.tts.stop).toHaveBeenCalled();
     expect(store.getState().phase).toBe('idle');
     expect(store.getState().active).toBeNull();
+  });
+
+  it('a second tap before React re-renders still shows its results', async () => {
+    const store = makeLaggingStore('pl', 'sv');
+    const services = fakeServices();
+    const firstListen = deferred<string>();
+    services.stt.listen.mockReturnValueOnce(firstListen.promise).mockResolvedValueOnce('Tak');
+    services.translator.translate.mockResolvedValue('Ja');
+    const runner = createTurnRunner(services, store.dispatch, store.getState);
+
+    const first = runner.startTurn('bottom');
+    const second = runner.startTurn('top');
+    store.render();
+    await second;
+    firstListen.resolve('Hej');
+    await first;
+
+    expect(store.latest().top).toEqual({ lang: 'pl', text: 'Tak', kind: 'heard' });
+    expect(store.latest().bottom).toEqual({ lang: 'sv', text: 'Ja', kind: 'translation' });
+    expect(store.latest().phase).toBe('idle');
+  });
+
+  it('shows "Translation failed" when checking the language pack throws', async () => {
+    const store = makeStore('pl', 'sv');
+    const services = fakeServices();
+    services.translator.isReady.mockRejectedValue(new Error('native boom'));
+
+    await expect(createTurnRunner(services, store.dispatch, store.getState).startTurn('bottom')).resolves.toBeUndefined();
+
+    expect(store.getState().bottom).toEqual({ lang: 'sv', text: 'Translation failed', kind: 'message' });
+    expect(store.getState().phase).toBe('idle');
   });
 });

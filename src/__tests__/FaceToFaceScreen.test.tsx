@@ -69,6 +69,12 @@ describe('FaceToFaceScreen', () => {
       await act(async () => finish());
     }
     await waitFor(() => expect(screen.queryByText(/Downloading/)).toBeNull());
+    expect(screen.getByText(/Offline ready/)).toBeTruthy();
+  });
+
+  it('says offline ready when every pack is already downloaded', async () => {
+    await renderReady();
+    expect(await screen.findByText(/Offline ready/)).toBeTruthy();
   });
 
   it('lists a failed pack with a retry that downloads it again', async () => {

@@ -24,12 +24,21 @@ export function PackBanner({ status, onRetry }: { status: PackStatus | null; onR
       </View>
     );
   }
+  if (values.every((v) => v === 'ready')) {
+    return (
+      <View style={[styles.banner, styles.ready]}>
+        <Text style={styles.readyText}>✓ Offline ready</Text>
+      </View>
+    );
+  }
   return null;
 }
 
 const styles = StyleSheet.create({
   banner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 8, backgroundColor: '#fef3c7' },
   error: { backgroundColor: '#fee2e2' },
+  ready: { padding: 2, backgroundColor: '#dcfce7' },
+  readyText: { fontSize: 12, color: '#166534' },
   text: { fontSize: 15 },
   retry: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#fff' },
   retryText: { fontSize: 15, fontWeight: '600' },

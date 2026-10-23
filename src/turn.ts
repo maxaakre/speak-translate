@@ -15,6 +15,7 @@ export function createTurnRunner(
 ) {
   const { stt, translator, tts } = services;
   // Bumped on every cancel, so an older turn notices it is stale after each await.
+  // Owned here rather than read from state: React state lags behind quick taps.
   let token = 0;
 
   function cancel() {
@@ -25,14 +26,13 @@ export function createTurnRunner(
 
   async function startTurn(side: Side): Promise<void> {
     cancel();
-    const mine = token;
-    const turnId = getState().turnId + 1;
-    dispatch({ type: 'start', side });
-
+    const turnId = token;
     const state = getState();
+    dispatch({ type: 'start', side, turnId });
+
     const from = state[side].lang;
     const to = state[other(side)].lang;
-    const stale = () => mine !== token;
+    const stale = () => turnId !== token;
     const message = (text: string) => dispatch({ type: 'message', turnId, text });
 
     let heard: string;
@@ -48,12 +48,12 @@ export function createTurnRunner(
 
     let translated = heard;
     if (from !== to) {
-      for (const lang of [from, to]) {
-        const ready = await translator.isReady(lang);
-        if (stale()) return;
-        if (!ready) return message(`${LABEL[lang]} not downloaded`);
-      }
       try {
+        for (const lang of [from, to]) {
+          const ready = await translator.isReady(lang);
+          if (stale()) return;
+          if (!ready) return message(`${LABEL[lang]} not downloaded`);
+        }
         translated = await translator.translate(heard, from, to);
       } catch {
         if (stale()) return;
