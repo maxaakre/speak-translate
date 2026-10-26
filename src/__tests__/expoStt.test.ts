@@ -58,6 +58,21 @@ describe('expoStt', () => {
     await expect(p).resolves.toBe('Hej');
   });
 
+  it('asks for partial results so on-device recognition ends on silence', async () => {
+    expoStt.listen('sv-SE').catch(() => {});
+    await flush();
+    expect(mod.start).toHaveBeenCalledWith(expect.objectContaining({ interimResults: true }));
+  });
+
+  it('resolves only the final transcript, not partial ones', async () => {
+    const p = expoStt.listen('sv-SE');
+    await flush();
+    listeners.result({ isFinal: false, results: [{ transcript: 'Hej h', confidence: 0, segments: [] }] });
+    listeners.result({ isFinal: true, results: [{ transcript: 'Hej hej', confidence: 1, segments: [] }] });
+    listeners.end({});
+    await expect(p).resolves.toBe('Hej hej');
+  });
+
   it('rejects with permission when the user denies access', async () => {
     mod.requestPermissionsAsync.mockResolvedValue({ granted: false } as any);
     expect(await codeOf(expoStt.listen('sv-SE'))).toBe('permission');

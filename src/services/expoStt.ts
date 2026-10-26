@@ -72,7 +72,8 @@ export const expoStt: SpeechToText = {
       ExpoSpeechRecognitionModule.start({
         lang: locale,
         requiresOnDeviceRecognition: true,
-        interimResults: false,
+        // On-device recognition only ends by itself on silence when partial results are on.
+        interimResults: true,
         continuous: false,
         addsPunctuation: true,
       });
