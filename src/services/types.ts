@@ -30,9 +30,15 @@ export interface VoiceOption {
   enhanced: boolean;
 }
 
-export interface TextToSpeech {
+export interface SpeakOptions {
   /** Without a voice the system picks one for the locale. */
-  speak(text: string, locale: string, voice?: string): Promise<void>;
+  voice?: string;
+  /** 1 is the normal speed. */
+  rate?: number;
+}
+
+export interface TextToSpeech {
+  speak(text: string, locale: string, options?: SpeakOptions): Promise<void>;
   stop(): void;
   voices(): Promise<VoiceOption[]>;
 }

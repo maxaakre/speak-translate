@@ -81,24 +81,42 @@ describe('FaceToFaceScreen', () => {
   it('closes the dropdown without changing anything when tapping outside it', async () => {
     await renderReady();
     await fireEvent.press(screen.getByTestId('lang-bottom'));
-    await fireEvent.press(screen.getByTestId('lang-backdrop-bottom'));
+    await fireEvent.press(screen.getByTestId('menu-backdrop-bottom'));
     expect(screen.queryByTestId('lang-option-bottom-en')).toBeNull();
     expect(screen.getByTestId('lang-bottom')).toHaveTextContent(/Svenska/);
   });
 
-  it('picking a voice plays a sample, is remembered, and speaks the next translation', async () => {
+  it('picking a voice in its own dropdown plays a sample, is remembered, and speaks the next translation', async () => {
     const services = await renderReady();
-    await fireEvent.press(screen.getByTestId('lang-top'));
+    expect(screen.getByTestId('voice-top')).toHaveTextContent(/Domyślny/);
+    await fireEvent.press(screen.getByTestId('voice-top'));
+    expect(screen.queryByTestId('lang-option-top-es')).toBeNull(); // languages live in the other dropdown
     expect(screen.queryByTestId('voice-option-top-alva')).toBeNull(); // Swedish voice, not on the Polish half
     await fireEvent.press(await screen.findByTestId('voice-option-top-zosia'));
 
-    expect(services.tts.speak).toHaveBeenCalledWith('Cześć, tak brzmię.', 'pl-PL', 'zosia');
+    expect(services.tts.speak).toHaveBeenCalledWith('Cześć, tak brzmię.', 'pl-PL', { voice: 'zosia', rate: 1 });
+    expect(screen.getByTestId('voice-top')).toHaveTextContent(/Zosia/);
     await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem('voices'))!)).toEqual({ pl: 'zosia' }));
 
-    await fireEvent.press(screen.getByTestId('lang-backdrop-top'));
+    await fireEvent.press(screen.getByTestId('menu-backdrop-top'));
     await fireEvent.press(screen.getByTestId('mic-bottom'));
     await screen.findByText('Cześć');
-    expect(services.tts.speak).toHaveBeenLastCalledWith('Cześć', 'pl-PL', 'zosia');
+    expect(services.tts.speak).toHaveBeenLastCalledWith('Cześć', 'pl-PL', { voice: 'zosia', rate: 1 });
+  });
+
+  it('a speed button plays a sample at that speed, is remembered, and speaks the next translation', async () => {
+    const services = await renderReady();
+    await fireEvent.press(screen.getByTestId('voice-top'));
+    await fireEvent.press(screen.getByTestId('speed-top-slow'));
+
+    expect(services.tts.speak).toHaveBeenCalledWith('Cześć, tak brzmię.', 'pl-PL', { voice: undefined, rate: 0.7 });
+    expect(screen.getByTestId('speed-top-slow')).toBeSelected();
+    await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem('speeds'))!)).toEqual({ pl: 'slow' }));
+
+    await fireEvent.press(screen.getByTestId('menu-backdrop-top'));
+    await fireEvent.press(screen.getByTestId('mic-bottom'));
+    await screen.findByText('Cześć');
+    expect(services.tts.speak).toHaveBeenLastCalledWith('Cześć', 'pl-PL', { voice: undefined, rate: 0.7 });
   });
 
   it('starts with the remembered language pair', async () => {
@@ -148,7 +166,7 @@ describe('FaceToFaceScreen', () => {
     await screen.findByText('Cześć');
     services.tts.speak.mockClear();
     await fireEvent.press(screen.getByTestId('replay-top'));
-    expect(services.tts.speak).toHaveBeenCalledWith('Cześć', 'pl-PL', undefined);
+    expect(services.tts.speak).toHaveBeenCalledWith('Cześć', 'pl-PL', { voice: undefined, rate: 1 });
   });
 
   it('clear removes both texts', async () => {

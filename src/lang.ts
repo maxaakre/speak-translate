@@ -16,6 +16,12 @@ export const LABEL: Record<Lang, string> = {
   en: 'English',
 };
 
+export type Speed = 'slow' | 'normal' | 'fast';
+
+export const SPEEDS: Speed[] = ['slow', 'normal', 'fast'];
+
+export const RATE: Record<Speed, number> = { slow: 0.7, normal: 1, fast: 1.25 };
+
 interface UiText {
   idle: string;
   listening: string;
@@ -23,6 +29,7 @@ interface UiText {
   voice: string;
   systemVoice: string;
   enhanced: string;
+  speed: Record<Speed, string>;
   // Spoken when a voice is picked, so it can be heard before a conversation.
   sample: string;
 }
@@ -36,6 +43,7 @@ export const UI_TEXT: Record<Lang, UiText> = {
     voice: 'Röst',
     systemVoice: 'Standard',
     enhanced: 'Förbättrad',
+    speed: { slow: 'Långsam', normal: 'Normal', fast: 'Snabb' },
     sample: 'Hej, så här låter jag.',
   },
   pl: {
@@ -45,6 +53,7 @@ export const UI_TEXT: Record<Lang, UiText> = {
     voice: 'Głos',
     systemVoice: 'Domyślny',
     enhanced: 'Ulepszony',
+    speed: { slow: 'Wolno', normal: 'Normalnie', fast: 'Szybko' },
     sample: 'Cześć, tak brzmię.',
   },
   es: {
@@ -54,6 +63,7 @@ export const UI_TEXT: Record<Lang, UiText> = {
     voice: 'Voz',
     systemVoice: 'Predeterminada',
     enhanced: 'Mejorada',
+    speed: { slow: 'Lento', normal: 'Normal', fast: 'Rápido' },
     sample: 'Hola, así sueno.',
   },
   en: {
@@ -63,6 +73,7 @@ export const UI_TEXT: Record<Lang, UiText> = {
     voice: 'Voice',
     systemVoice: 'Default',
     enhanced: 'Enhanced',
+    speed: { slow: 'Slow', normal: 'Normal', fast: 'Fast' },
     sample: 'Hi, this is how I sound.',
   },
 };

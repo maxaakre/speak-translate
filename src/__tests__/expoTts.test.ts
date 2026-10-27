@@ -43,10 +43,13 @@ describe('expoTts', () => {
     expect(order).toEqual(['category', 'speak']);
   });
 
-  it('speaks with the chosen voice', async () => {
+  it('speaks with the chosen voice and speed', async () => {
     speak.mockImplementation((_t, opts) => opts.onDone());
-    await expoTts.speak('Hej', 'sv-SE', 'com.apple.voice.enhanced.sv-SE.Alva');
-    expect(speak).toHaveBeenCalledWith('Hej', expect.objectContaining({ voice: 'com.apple.voice.enhanced.sv-SE.Alva' }));
+    await expoTts.speak('Hej', 'sv-SE', { voice: 'com.apple.voice.enhanced.sv-SE.Alva', rate: 0.7 });
+    expect(speak).toHaveBeenCalledWith(
+      'Hej',
+      expect.objectContaining({ voice: 'com.apple.voice.enhanced.sv-SE.Alva', rate: 0.7 }),
+    );
   });
 
   it('lists real voices, better quality first, without the novelty ones', async () => {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Half, Side } from '../conversation';
-import { LABEL, LANGS, Lang, UI_TEXT } from '../lang';
+import { LABEL, LANGS, Lang, SPEEDS, Speed, UI_TEXT } from '../lang';
 import { VoiceOption } from '../services/types';
 import { MicButton } from './MicButton';
 import { INK, MUTED, SIDE_THEME, WARN } from './theme';
@@ -12,45 +12,60 @@ interface Props {
   listening: boolean;
   // Another half is taking its turn, so this one steps back.
   dimmed: boolean;
-  onMic: () => void;
   // Voices for this half's language, and the chosen one (undefined: system voice).
   voices: VoiceOption[];
   voice: string | undefined;
+  speed: Speed;
+  onMic: () => void;
   onLang: (lang: Lang) => void;
   onVoice: (voice: string | undefined) => void;
+  onSpeed: (speed: Speed) => void;
   onReplay: () => void;
 }
 
-export function HalfPanel({ side, half, listening, dimmed, voices, voice, onMic, onLang, onVoice, onReplay }: Props) {
+type Menu = 'lang' | 'voice' | null;
+
+export function HalfPanel(props: Props) {
+  const { side, half, listening, dimmed, voices, voice, speed } = props;
   const { accent, surface } = SIDE_THEME[side];
   const text = UI_TEXT[half.lang];
   const canReplay = !!half.text && half.kind !== 'message';
-  const [menuOpen, setMenuOpen] = useState(false);
+  const voiceName = voices.find((v) => v.id === voice)?.name ?? text.systemVoice;
+  const [menu, setMenu] = useState<Menu>(null);
 
-  const pick = (lang: Lang) => {
-    setMenuOpen(false);
-    if (lang !== half.lang) onLang(lang);
+  const toggle = (which: Menu) => setMenu((open) => (open === which ? null : which));
+  const pickLang = (lang: Lang) => {
+    setMenu(null);
+    if (lang !== half.lang) props.onLang(lang);
   };
+  const option = { accent, surface };
 
   return (
     // The top half is turned around for the person across the table.
     <View style={[styles.half, { backgroundColor: surface }, side === 'top' && styles.flipped, dimmed && styles.dimmed]}>
       <View style={styles.header}>
-        <Pressable
-          testID={`lang-${side}`}
-          onPress={() => setMenuOpen((open) => !open)}
-          style={({ pressed }) => [styles.lang, { borderColor: accent }, pressed && styles.chipPressed]}
-          accessibilityLabel="Change language"
-          accessibilityState={{ expanded: menuOpen }}
-        >
-          <Text style={[styles.langText, { color: accent }]}>
-            {LABEL[half.lang]} {menuOpen ? '▴' : '▾'}
-          </Text>
-        </Pressable>
+        <View style={styles.chips}>
+          <Chip
+            testID={`lang-${side}`}
+            label={LABEL[half.lang]}
+            open={menu === 'lang'}
+            accent={accent}
+            accessibilityLabel="Change language"
+            onPress={() => toggle('lang')}
+          />
+          <Chip
+            testID={`voice-${side}`}
+            label={voiceName}
+            open={menu === 'voice'}
+            accent={accent}
+            accessibilityLabel="Change voice and speed"
+            onPress={() => toggle('voice')}
+          />
+        </View>
         {canReplay && (
           <Pressable
             testID={`replay-${side}`}
-            onPress={onReplay}
+            onPress={props.onReplay}
             style={({ pressed }) => [styles.replay, pressed && styles.chipPressed]}
             accessibilityLabel="Play again"
           >
@@ -77,60 +92,108 @@ export function HalfPanel({ side, half, listening, dimmed, voices, voice, onMic,
           color={accent}
           listening={listening}
           label={`Speak ${LABEL[half.lang]}`}
-          onPress={onMic}
+          onPress={props.onMic}
         />
         <Text style={[styles.hint, listening && { color: accent }]}>{listening ? text.listening : text.idle}</Text>
       </View>
 
-      {/* Inside the half, so the menu turns around with the top half. */}
-      {menuOpen && (
+      {/* Inside the half, so the menus turn around with the top half. */}
+      {menu && (
         <>
           <Pressable
-            testID={`lang-backdrop-${side}`}
+            testID={`menu-backdrop-${side}`}
             style={StyleSheet.absoluteFill}
-            onPress={() => setMenuOpen(false)}
-            accessibilityLabel="Close language list"
+            onPress={() => setMenu(null)}
+            accessibilityLabel="Close list"
           />
           <View style={styles.menu} accessibilityRole="menu">
             <ScrollView style={styles.menuScroll} bounces={false}>
-              {LANGS.map((lang) => (
-                <Option
-                  key={lang}
-                  testID={`lang-option-${side}-${lang}`}
-                  label={LABEL[lang]}
-                  current={lang === half.lang}
-                  accent={accent}
-                  surface={surface}
-                  onPress={() => pick(lang)}
-                />
-              ))}
+              {menu === 'lang' &&
+                LANGS.map((lang) => (
+                  <Option
+                    key={lang}
+                    testID={`lang-option-${side}-${lang}`}
+                    label={LABEL[lang]}
+                    current={lang === half.lang}
+                    {...option}
+                    onPress={() => pickLang(lang)}
+                  />
+                ))}
 
-              <Text style={styles.section}>{text.voice}</Text>
-              <Option
-                testID={`voice-option-${side}-system`}
-                label={text.systemVoice}
-                current={!voice}
-                accent={accent}
-                surface={surface}
-                onPress={() => onVoice(undefined)}
-              />
-              {voices.map((v) => (
-                <Option
-                  key={v.id}
-                  testID={`voice-option-${side}-${v.id}`}
-                  label={v.name}
-                  detail={v.enhanced ? text.enhanced : undefined}
-                  current={v.id === voice}
-                  accent={accent}
-                  surface={surface}
-                  onPress={() => onVoice(v.id)}
-                />
-              ))}
+              {menu === 'voice' && (
+                <>
+                  {/* Stays open on every choice, so voices and speeds can be compared. */}
+                  <View style={styles.speeds}>
+                    {SPEEDS.map((s) => {
+                      const current = s === speed;
+                      return (
+                        <Pressable
+                          key={s}
+                          testID={`speed-${side}-${s}`}
+                          onPress={() => props.onSpeed(s)}
+                          style={({ pressed }) => [
+                            styles.speed,
+                            current && { backgroundColor: accent },
+                            pressed && !current && styles.optionPressed,
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: current }}
+                        >
+                          <Text style={[styles.speedText, current && styles.speedTextCurrent]}>{text.speed[s]}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  <Option
+                    testID={`voice-option-${side}-system`}
+                    label={text.systemVoice}
+                    current={!voice}
+                    {...option}
+                    onPress={() => props.onVoice(undefined)}
+                  />
+                  {voices.map((v) => (
+                    <Option
+                      key={v.id}
+                      testID={`voice-option-${side}-${v.id}`}
+                      label={v.name}
+                      detail={v.enhanced ? text.enhanced : undefined}
+                      current={v.id === voice}
+                      {...option}
+                      onPress={() => props.onVoice(v.id)}
+                    />
+                  ))}
+                </>
+              )}
             </ScrollView>
           </View>
         </>
       )}
     </View>
+  );
+}
+
+interface ChipProps {
+  testID: string;
+  label: string;
+  open: boolean;
+  accent: string;
+  accessibilityLabel: string;
+  onPress: () => void;
+}
+
+function Chip({ testID, label, open, accent, accessibilityLabel, onPress }: ChipProps) {
+  return (
+    <Pressable
+      testID={testID}
+      onPress={onPress}
+      style={({ pressed }) => [styles.chip, { borderColor: accent }, open && { backgroundColor: accent }, pressed && styles.chipPressed]}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ expanded: open }}
+    >
+      <Text style={[styles.chipText, { color: open ? '#fff' : accent }]} numberOfLines={1}>
+        {label} {open ? '▴' : '▾'}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -166,9 +229,10 @@ const styles = StyleSheet.create({
   half: { flex: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 20 },
   flipped: { transform: [{ rotate: '180deg' }] },
   dimmed: { opacity: 0.45 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  lang: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1.5, backgroundColor: '#fff' },
-  langText: { fontSize: 17, fontWeight: '600' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  chips: { flexDirection: 'row', gap: 8, flexShrink: 1 },
+  chip: { maxWidth: 160, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1.5, backgroundColor: '#fff' },
+  chipText: { fontSize: 16, fontWeight: '600' },
   chipPressed: { opacity: 0.6 },
   replay: { paddingVertical: 8, paddingHorizontal: 4 },
   replayText: { fontSize: 16, fontWeight: '600' },
@@ -204,7 +268,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   menuScroll: { maxHeight: 300 },
-  section: { marginTop: 10, marginBottom: 4, marginHorizontal: 22, fontSize: 14, fontWeight: '600', color: MUTED },
+  speeds: { flexDirection: 'row', gap: 4, margin: 6, marginBottom: 8, padding: 4, borderRadius: 12, backgroundColor: '#ECEDF3' },
+  speed: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 9, paddingHorizontal: 6 },
+  speedText: { fontSize: 15, fontWeight: '600', color: INK },
+  speedTextCurrent: { color: '#fff' },
   optionPressed: { backgroundColor: '#ECEDF3' },
   optionDetail: { fontSize: 13, color: MUTED, marginTop: 1 },
   optionText: { fontSize: 18, color: INK, fontWeight: '500' },

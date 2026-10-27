@@ -6,13 +6,14 @@ import { TextToSpeech } from './types';
 const isNovelty = (id: string) => id.includes('speech.synthesis') || id.includes('eloquence');
 
 export const expoTts: TextToSpeech = {
-  speak(text, locale, voice) {
+  speak(text, locale, { voice, rate } = {}) {
     // Recognition leaves the session in measurement mode, which plays quietly.
     ExpoSpeechRecognitionModule.setCategoryIOS({ category: 'playback', categoryOptions: ['duckOthers'], mode: 'spokenAudio' });
     return new Promise((resolve, reject) => {
       Speech.speak(text, {
         language: locale,
         voice,
+        rate,
         onDone: () => resolve(),
         onStopped: () => resolve(),
         onError: (e) => reject(e),

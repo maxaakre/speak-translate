@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { loadLangPair, loadVoices, saveLangPair, saveVoices } from '../settings';
+import { loadLangPair, loadSpeeds, loadVoices, saveLangPair, saveSpeeds, saveVoices } from '../settings';
 
 beforeEach(() => AsyncStorage.clear());
 
@@ -36,5 +36,23 @@ describe('voice settings', () => {
     expect(await loadVoices()).toEqual({ sv: 'alva' });
     await AsyncStorage.setItem('voices', 'not json');
     expect(await loadVoices()).toEqual({});
+  });
+});
+
+describe('speed settings', () => {
+  it('has no chosen speeds at first', async () => {
+    expect(await loadSpeeds()).toEqual({});
+  });
+
+  it('returns the speeds that were saved', async () => {
+    await saveSpeeds({ sv: 'slow', en: 'fast' });
+    expect(await loadSpeeds()).toEqual({ sv: 'slow', en: 'fast' });
+  });
+
+  it('drops unknown languages and speeds', async () => {
+    await AsyncStorage.setItem('speeds', JSON.stringify({ sv: 'slow', de: 'fast', pl: 'turbo' }));
+    expect(await loadSpeeds()).toEqual({ sv: 'slow' });
+    await AsyncStorage.setItem('speeds', 'not json');
+    expect(await loadSpeeds()).toEqual({});
   });
 });
