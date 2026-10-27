@@ -23,9 +23,18 @@ export interface Translator {
   translate(text: string, from: Lang, to: Lang): Promise<string>;
 }
 
+export interface VoiceOption {
+  id: string;
+  name: string;
+  locale: string;
+  enhanced: boolean;
+}
+
 export interface TextToSpeech {
-  speak(text: string, locale: string): Promise<void>;
+  /** Without a voice the system picks one for the locale. */
+  speak(text: string, locale: string, voice?: string): Promise<void>;
   stop(): void;
+  voices(): Promise<VoiceOption[]>;
 }
 
 export interface Services {

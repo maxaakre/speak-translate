@@ -25,3 +25,26 @@ export async function loadLangPair(): Promise<LangPair> {
 export async function saveLangPair(pair: LangPair): Promise<void> {
   await AsyncStorage.setItem(KEY, JSON.stringify(pair));
 }
+
+// The chosen voice id per language; a missing language uses the system voice.
+export type VoiceChoice = Partial<Record<Lang, string>>;
+
+const VOICES_KEY = 'voices';
+
+export async function loadVoices(): Promise<VoiceChoice> {
+  try {
+    const raw = await AsyncStorage.getItem(VOICES_KEY);
+    const stored = raw ? JSON.parse(raw) : {};
+    const choice: VoiceChoice = {};
+    for (const lang of LANGS) {
+      if (typeof stored?.[lang] === 'string') choice[lang] = stored[lang];
+    }
+    return choice;
+  } catch {
+    return {};
+  }
+}
+
+export async function saveVoices(choice: VoiceChoice): Promise<void> {
+  await AsyncStorage.setItem(VOICES_KEY, JSON.stringify(choice));
+}

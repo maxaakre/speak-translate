@@ -1,5 +1,5 @@
 import { Action, ConversationState, Side, other } from './conversation';
-import { LABEL, LOCALE } from './lang';
+import { LABEL, LOCALE, Lang } from './lang';
 import { Services, SttError, SttErrorCode } from './services/types';
 
 const STT_MESSAGE: Record<SttErrorCode, string> = {
@@ -12,6 +12,7 @@ export function createTurnRunner(
   services: Services,
   dispatch: (a: Action) => void,
   getState: () => ConversationState,
+  voiceFor: (lang: Lang) => string | undefined = () => undefined,
 ) {
   const { stt, translator, tts } = services;
   // Bumped on every cancel, so an older turn notices it is stale after each await.
@@ -72,7 +73,7 @@ export function createTurnRunner(
 
     dispatch({ type: 'speaking', turnId });
     try {
-      await tts.speak(translated, LOCALE[to]);
+      await tts.speak(translated, LOCALE[to], voiceFor(to));
     } catch {
       // The text is on screen; a failed voice is not worth an error message.
     }

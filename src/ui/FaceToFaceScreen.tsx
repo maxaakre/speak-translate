@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Side, initialState, reducer } from '../conversation';
-import { LANGS, LOCALE } from '../lang';
+import { LOCALE, Lang, UI_TEXT } from '../lang';
 import { PackStatus, ensurePacks } from '../packs';
-import { Services } from '../services/types';
-import { loadLangPair, saveLangPair } from '../settings';
+import { Services, VoiceOption } from '../services/types';
+import { VoiceChoice, loadLangPair, loadVoices, saveLangPair, saveVoices } from '../settings';
 import { createTurnRunner } from '../turn';
 import { HalfPanel } from './HalfPanel';
 import { MiddleBar } from './MiddleBar';
@@ -14,10 +14,17 @@ export function FaceToFaceScreen({ services }: { services: Services }) {
   const [state, dispatch] = useReducer(reducer, initialState('pl', 'sv'));
   const [loaded, setLoaded] = useState(false);
   const [packs, setPacks] = useState<PackStatus | null>(null);
+  const [voices, setVoices] = useState<VoiceOption[]>([]);
+  const [chosen, setChosen] = useState<VoiceChoice>({});
   const stateRef = useRef(state);
   stateRef.current = state;
+  const chosenRef = useRef(chosen);
+  chosenRef.current = chosen;
 
-  const runner = useMemo(() => createTurnRunner(services, dispatch, () => stateRef.current), [services]);
+  const runner = useMemo(
+    () => createTurnRunner(services, dispatch, () => stateRef.current, (lang) => chosenRef.current[lang]),
+    [services],
+  );
   useEffect(() => () => runner.cancel(), [runner]);
 
   useEffect(() => {
@@ -27,6 +34,20 @@ export function FaceToFaceScreen({ services }: { services: Services }) {
       setLoaded(true);
     });
   }, []);
+
+  useEffect(() => {
+    loadVoices().then(setChosen);
+    services.tts.voices().then(setVoices).catch(() => {});
+  }, [services]);
+
+  const chooseVoice = (lang: Lang, voice: string | undefined) => {
+    const next = { ...chosen, [lang]: voice };
+    if (!voice) delete next[lang];
+    setChosen(next);
+    saveVoices(next);
+    services.tts.stop();
+    services.tts.speak(UI_TEXT[lang].sample, LOCALE[lang], voice).catch(() => {});
+  };
 
   // Save only after loading, so the defaults never overwrite the remembered pair.
   useEffect(() => {
@@ -38,14 +59,9 @@ export function FaceToFaceScreen({ services }: { services: Services }) {
   }, [services]);
   useEffect(downloadPacks, [downloadPacks]);
 
-  const nextLang = (side: Side) => {
-    const current = state[side].lang;
-    dispatch({ type: 'setLang', side, lang: LANGS[(LANGS.indexOf(current) + 1) % LANGS.length] });
-  };
-
   const replay = (side: Side) => {
     const half = state[side];
-    if (half.text && half.kind !== 'message') services.tts.speak(half.text, LOCALE[half.lang]).catch(() => {});
+    if (half.text && half.kind !== 'message') services.tts.speak(half.text, LOCALE[half.lang], chosen[half.lang]).catch(() => {});
   };
 
   const panel = (side: Side) => (
@@ -54,8 +70,11 @@ export function FaceToFaceScreen({ services }: { services: Services }) {
       half={state[side]}
       listening={state.active === side && state.phase === 'listening'}
       dimmed={state.phase === 'listening' && state.active !== side}
+      voices={voices.filter((v) => v.locale === LOCALE[state[side].lang])}
+      voice={chosen[state[side].lang]}
+      onVoice={(voice) => chooseVoice(state[side].lang, voice)}
       onMic={() => runner.startTurn(side)}
-      onLang={() => nextLang(side)}
+      onLang={(lang) => dispatch({ type: 'setLang', side, lang })}
       onReplay={() => replay(side)}
     />
   );

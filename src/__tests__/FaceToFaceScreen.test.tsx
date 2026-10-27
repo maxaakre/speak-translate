@@ -11,7 +11,14 @@ function fakeServices() {
       download: jest.fn().mockResolvedValue(undefined),
       translate: jest.fn().mockResolvedValue('Cześć'),
     },
-    tts: { speak: jest.fn().mockResolvedValue(undefined), stop: jest.fn() },
+    tts: {
+      speak: jest.fn().mockResolvedValue(undefined),
+      stop: jest.fn(),
+      voices: jest.fn().mockResolvedValue([
+        { id: 'zosia', name: 'Zosia', locale: 'pl-PL', enhanced: true },
+        { id: 'alva', name: 'Alva', locale: 'sv-SE', enhanced: false },
+      ]),
+    },
   } satisfies Services;
 }
 
@@ -59,13 +66,39 @@ describe('FaceToFaceScreen', () => {
     );
   });
 
-  it('tapping a language label moves to the next language and remembers it', async () => {
+  it('picking a language from the dropdown sets it and remembers it', async () => {
     await renderReady();
+    expect(screen.queryByTestId('lang-option-top-es')).toBeNull();
     await fireEvent.press(screen.getByTestId('lang-top'));
+    await fireEvent.press(screen.getByTestId('lang-option-top-es'));
     expect(screen.getByTestId('lang-top')).toHaveTextContent(/Español/);
+    expect(screen.queryByTestId('lang-option-top-es')).toBeNull();
     await waitFor(async () =>
       expect(JSON.parse((await AsyncStorage.getItem('langPair'))!)).toEqual({ top: 'es', bottom: 'sv' }),
     );
+  });
+
+  it('closes the dropdown without changing anything when tapping outside it', async () => {
+    await renderReady();
+    await fireEvent.press(screen.getByTestId('lang-bottom'));
+    await fireEvent.press(screen.getByTestId('lang-backdrop-bottom'));
+    expect(screen.queryByTestId('lang-option-bottom-en')).toBeNull();
+    expect(screen.getByTestId('lang-bottom')).toHaveTextContent(/Svenska/);
+  });
+
+  it('picking a voice plays a sample, is remembered, and speaks the next translation', async () => {
+    const services = await renderReady();
+    await fireEvent.press(screen.getByTestId('lang-top'));
+    expect(screen.queryByTestId('voice-option-top-alva')).toBeNull(); // Swedish voice, not on the Polish half
+    await fireEvent.press(await screen.findByTestId('voice-option-top-zosia'));
+
+    expect(services.tts.speak).toHaveBeenCalledWith('Cześć, tak brzmię.', 'pl-PL', 'zosia');
+    await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem('voices'))!)).toEqual({ pl: 'zosia' }));
+
+    await fireEvent.press(screen.getByTestId('lang-backdrop-top'));
+    await fireEvent.press(screen.getByTestId('mic-bottom'));
+    await screen.findByText('Cześć');
+    expect(services.tts.speak).toHaveBeenLastCalledWith('Cześć', 'pl-PL', 'zosia');
   });
 
   it('starts with the remembered language pair', async () => {
@@ -115,7 +148,7 @@ describe('FaceToFaceScreen', () => {
     await screen.findByText('Cześć');
     services.tts.speak.mockClear();
     await fireEvent.press(screen.getByTestId('replay-top'));
-    expect(services.tts.speak).toHaveBeenCalledWith('Cześć', 'pl-PL');
+    expect(services.tts.speak).toHaveBeenCalledWith('Cześć', 'pl-PL', undefined);
   });
 
   it('clear removes both texts', async () => {

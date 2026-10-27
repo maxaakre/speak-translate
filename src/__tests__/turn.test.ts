@@ -30,7 +30,7 @@ function fakeServices(overrides: Partial<{ heard: string; translated: string }> 
       download: jest.fn().mockResolvedValue(undefined),
       translate: jest.fn().mockResolvedValue(overrides.translated ?? 'Cześć'),
     },
-    tts: { speak: jest.fn().mockResolvedValue(undefined), stop: jest.fn() },
+    tts: { speak: jest.fn().mockResolvedValue(undefined), stop: jest.fn(), voices: jest.fn().mockResolvedValue([]) },
   };
   return services satisfies Services;
 }
@@ -61,11 +61,22 @@ describe('turn runner', () => {
 
     expect(services.stt.listen).toHaveBeenCalledWith('sv-SE');
     expect(services.translator.translate).toHaveBeenCalledWith('Hej', 'sv', 'pl');
-    expect(services.tts.speak).toHaveBeenCalledWith('Cześć', 'pl-PL');
+    expect(services.tts.speak).toHaveBeenCalledWith('Cześć', 'pl-PL', undefined);
     const s = store.getState();
     expect(s.bottom).toEqual({ lang: 'sv', text: 'Hej', kind: 'heard' });
     expect(s.top).toEqual({ lang: 'pl', text: 'Cześć', kind: 'translation' });
     expect(s.phase).toBe('idle');
+  });
+
+  it('speaks the translation with the voice chosen for that language', async () => {
+    const store = makeStore('pl', 'sv');
+    const services = fakeServices();
+    const voiceFor = (lang: Lang) => (lang === 'pl' ? 'zosia' : undefined);
+    const runner = createTurnRunner(services, store.dispatch, store.getState, voiceFor);
+
+    await runner.startTurn('bottom');
+
+    expect(services.tts.speak).toHaveBeenCalledWith('Cześć', 'pl-PL', 'zosia');
   });
 
   it("shows \"Didn't catch that\" when nothing is heard", async () => {
@@ -141,7 +152,7 @@ describe('turn runner', () => {
 
     expect(services.translator.translate).not.toHaveBeenCalled();
     expect(store.getState().top).toEqual({ lang: 'sv', text: 'Hej', kind: 'translation' });
-    expect(services.tts.speak).toHaveBeenCalledWith('Hej', 'sv-SE');
+    expect(services.tts.speak).toHaveBeenCalledWith('Hej', 'sv-SE', undefined);
   });
 
   it('a new turn stops the old one and its late result never reaches the screen', async () => {
