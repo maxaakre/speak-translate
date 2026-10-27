@@ -83,4 +83,7 @@ export const expoStt: SpeechToText = {
     generation += 1;
     if (sessionOpen) ExpoSpeechRecognitionModule.abort();
   },
+  finish() {
+    if (sessionOpen) ExpoSpeechRecognitionModule.stop();
+  },
 };

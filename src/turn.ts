@@ -17,14 +17,18 @@ export function createTurnRunner(
   // Bumped on every cancel, so an older turn notices it is stale after each await.
   // Owned here rather than read from state: React state lags behind quick taps.
   let token = 0;
+  // The side whose mic is open, so tapping it again finishes instead of restarting.
+  let listeningSide: Side | null = null;
 
   function cancel() {
     token += 1;
+    listeningSide = null;
     stt.stop();
     tts.stop();
   }
 
   async function startTurn(side: Side): Promise<void> {
+    if (listeningSide === side) return stt.finish();
     cancel();
     const turnId = token;
     const state = getState();
@@ -36,13 +40,16 @@ export function createTurnRunner(
     const message = (text: string) => dispatch({ type: 'message', turnId, text });
 
     let heard: string;
+    listeningSide = side;
     try {
       heard = (await stt.listen(LOCALE[from])).trim();
     } catch (e) {
       if (stale()) return;
+      listeningSide = null;
       return message(STT_MESSAGE[e instanceof SttError ? e.code : 'unavailable']);
     }
     if (stale()) return;
+    listeningSide = null;
     if (!heard) return message(STT_MESSAGE['no-speech']);
     dispatch({ type: 'heard', turnId, text: heard });
 

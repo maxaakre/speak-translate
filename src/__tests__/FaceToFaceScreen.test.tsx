@@ -5,7 +5,7 @@ import { Services } from '../services/types';
 
 function fakeServices() {
   return {
-    stt: { listen: jest.fn().mockResolvedValue('Hej'), stop: jest.fn() },
+    stt: { listen: jest.fn().mockResolvedValue('Hej'), stop: jest.fn(), finish: jest.fn() },
     translator: {
       isReady: jest.fn().mockResolvedValue(true),
       download: jest.fn().mockResolvedValue(undefined),
@@ -29,6 +29,24 @@ describe('FaceToFaceScreen', () => {
     await fireEvent.press(screen.getByTestId('mic-bottom'));
     expect(await screen.findByText('Cześć')).toBeTruthy();
     expect(screen.getByText('Hej')).toBeTruthy();
+  });
+
+  it("shows that the mic is listening in that person's language, and a second tap finishes", async () => {
+    const services = await renderReady();
+    let heard!: (text: string) => void;
+    services.stt.listen.mockReturnValue(new Promise((r) => (heard = r)));
+    services.stt.finish.mockImplementation(() => heard('Hej'));
+    expect(screen.getByText('Tryck och prata')).toBeTruthy();
+
+    // Not awaited: the tap's turn only ends once listening finishes.
+    fireEvent.press(screen.getByTestId('mic-bottom'));
+    expect(await screen.findByText(/Lyssnar/)).toBeTruthy();
+    expect(screen.getByText('Naciśnij i mów')).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('mic-bottom'));
+    expect(services.stt.finish).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('Cześć')).toBeTruthy();
+    expect(screen.getByText('Tryck och prata')).toBeTruthy();
   });
 
   it('swap exchanges the language labels and remembers the pair', async () => {

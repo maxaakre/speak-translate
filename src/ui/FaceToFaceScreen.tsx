@@ -48,12 +48,12 @@ export function FaceToFaceScreen({ services }: { services: Services }) {
     if (half.text && half.kind !== 'message') services.tts.speak(half.text, LOCALE[half.lang]).catch(() => {});
   };
 
-  const panel = (side: Side, color: string) => (
+  const panel = (side: Side) => (
     <HalfPanel
       side={side}
       half={state[side]}
-      color={color}
       listening={state.active === side && state.phase === 'listening'}
+      dimmed={state.phase === 'listening' && state.active !== side}
       onMic={() => runner.startTurn(side)}
       onLang={() => nextLang(side)}
       onReplay={() => replay(side)}
@@ -62,10 +62,10 @@ export function FaceToFaceScreen({ services }: { services: Services }) {
 
   return (
     <View style={styles.screen}>
-      {panel('top', '#dc2626')}
+      {panel('top')}
       <PackBanner status={packs} onRetry={downloadPacks} />
       <MiddleBar onSwap={() => dispatch({ type: 'swap' })} onClear={() => dispatch({ type: 'clear' })} />
-      {panel('bottom', '#2563eb')}
+      {panel('bottom')}
     </View>
   );
 }

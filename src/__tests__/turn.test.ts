@@ -24,7 +24,7 @@ function deferred<T>() {
 
 function fakeServices(overrides: Partial<{ heard: string; translated: string }> = {}) {
   const services = {
-    stt: { listen: jest.fn().mockResolvedValue(overrides.heard ?? 'Hej'), stop: jest.fn() },
+    stt: { listen: jest.fn().mockResolvedValue(overrides.heard ?? 'Hej'), stop: jest.fn(), finish: jest.fn() },
     translator: {
       isReady: jest.fn().mockResolvedValue(true),
       download: jest.fn().mockResolvedValue(undefined),
@@ -183,6 +183,38 @@ describe('turn runner', () => {
     expect(services.tts.stop).toHaveBeenCalled();
     expect(store.getState().phase).toBe('idle');
     expect(store.getState().active).toBeNull();
+  });
+
+  it('tapping the same mic while listening finishes and translates what was heard', async () => {
+    const store = makeStore('pl', 'sv');
+    const services = fakeServices();
+    const listening = deferred<string>();
+    services.stt.listen.mockReturnValueOnce(listening.promise);
+    services.stt.finish.mockImplementation(() => listening.resolve('Hej'));
+    const runner = createTurnRunner(services, store.dispatch, store.getState);
+
+    const turn = runner.startTurn('bottom');
+    await new Promise((r) => setTimeout(r, 0));
+    await runner.startTurn('bottom');
+    await turn;
+
+    expect(services.stt.finish).toHaveBeenCalledTimes(1);
+    expect(services.stt.stop).toHaveBeenCalledTimes(1); // only the first tap's reset
+    expect(services.stt.listen).toHaveBeenCalledTimes(1);
+    expect(store.getState().bottom).toEqual({ lang: 'sv', text: 'Hej', kind: 'heard' });
+    expect(store.getState().top).toEqual({ lang: 'pl', text: 'Cześć', kind: 'translation' });
+  });
+
+  it('tapping the same mic after listening ends starts a new turn', async () => {
+    const store = makeStore('pl', 'sv');
+    const services = fakeServices();
+    const runner = createTurnRunner(services, store.dispatch, store.getState);
+
+    await runner.startTurn('bottom');
+    await runner.startTurn('bottom');
+
+    expect(services.stt.finish).not.toHaveBeenCalled();
+    expect(services.stt.listen).toHaveBeenCalledTimes(2);
   });
 
   it('a second tap before React re-renders still shows its results', async () => {

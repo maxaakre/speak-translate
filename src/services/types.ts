@@ -11,7 +11,10 @@ export class SttError extends Error {
 
 export interface SpeechToText {
   listen(locale: string): Promise<string>;
+  /** Stops listening and throws away what was heard. */
   stop(): void;
+  /** Stops listening and keeps what was heard. */
+  finish(): void;
 }
 
 export interface Translator {

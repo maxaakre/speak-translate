@@ -14,6 +14,7 @@ jest.mock('expo-speech-recognition', () => ({
       return { remove: jest.fn() };
     }),
     start: jest.fn(),
+    stop: jest.fn(),
     abort: jest.fn(),
   },
 }));
@@ -115,6 +116,22 @@ describe('expoStt', () => {
     expect(mod.abort).toHaveBeenCalledTimes(1);
     listeners.end({});
     await p.catch(() => {});
+  });
+
+  it('finish stops listening and keeps the transcript', async () => {
+    const p = expoStt.listen('sv-SE');
+    await flush();
+    expoStt.finish();
+    expect(mod.stop).toHaveBeenCalledTimes(1);
+    expect(mod.abort).not.toHaveBeenCalled();
+    listeners.result({ isFinal: true, results: [{ transcript: 'Hej', confidence: 1, segments: [] }] });
+    listeners.end({});
+    await expect(p).resolves.toBe('Hej');
+  });
+
+  it('finish does nothing when no session is open', () => {
+    expoStt.finish();
+    expect(mod.stop).not.toHaveBeenCalled();
   });
 
   it('stop does nothing when no session is open', () => {
