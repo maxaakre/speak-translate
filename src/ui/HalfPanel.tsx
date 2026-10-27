@@ -106,71 +106,75 @@ export function HalfPanel(props: Props) {
             onPress={() => setMenu(null)}
             accessibilityLabel="Close list"
           />
-          <View style={styles.menu} accessibilityRole="menu">
-            <ScrollView style={styles.menuScroll} bounces={false}>
-              {menu === 'lang' &&
-                LANGS.map((lang) => (
-                  <Option
-                    key={lang}
-                    testID={`lang-option-${side}-${lang}`}
-                    label={LABEL[lang]}
-                    current={lang === half.lang}
-                    {...option}
-                    onPress={() => pickLang(lang)}
-                  />
-                ))}
-
-              {menu === 'voice' && (
-                <>
-                  {/* Stays open on every choice, so voices and speeds can be compared. */}
-                  <View style={styles.speeds}>
-                    {SPEEDS.map((s) => {
-                      const current = s === speed;
-                      return (
-                        <Pressable
-                          key={s}
-                          testID={`speed-${side}-${s}`}
-                          onPress={() => props.onSpeed(s)}
-                          style={({ pressed }) => [
-                            styles.speed,
-                            current && { backgroundColor: accent },
-                            pressed && !current && styles.optionPressed,
-                          ]}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected: current }}
-                        >
-                          <Text
-                            style={[styles.speedText, current && styles.speedTextCurrent]}
-                            numberOfLines={1}
-                            adjustsFontSizeToFit
-                          >
-                            {text.speed[s]}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                  <Option
-                    testID={`voice-option-${side}-system`}
-                    label={text.systemVoice}
-                    current={!voice}
-                    {...option}
-                    onPress={() => props.onVoice(undefined)}
-                  />
-                  {voices.map((v) => (
+          {/* The frame keeps the menu inside the half's margins on narrow screens. */}
+          <View style={styles.menuFrame} pointerEvents="box-none">
+            <View style={[styles.menu, menu === 'voice' && styles.voiceMenu]} accessibilityRole="menu">
+              <ScrollView style={styles.menuScroll} bounces={false}>
+                {menu === 'lang' &&
+                  LANGS.map((lang) => (
                     <Option
-                      key={v.id}
-                      testID={`voice-option-${side}-${v.id}`}
-                      label={v.name}
-                      detail={v.enhanced ? text.enhanced : undefined}
-                      current={v.id === voice}
+                      key={lang}
+                      testID={`lang-option-${side}-${lang}`}
+                      label={LABEL[lang]}
+                      current={lang === half.lang}
                       {...option}
-                      onPress={() => props.onVoice(v.id)}
+                      onPress={() => pickLang(lang)}
                     />
                   ))}
-                </>
-              )}
-            </ScrollView>
+
+                {menu === 'voice' && (
+                  <>
+                    {/* Stays open on every choice, so voices and speeds can be compared. */}
+                    <View style={styles.speeds}>
+                      {SPEEDS.map((s) => {
+                        const current = s === speed;
+                        return (
+                          <Pressable
+                            key={s}
+                            testID={`speed-${side}-${s}`}
+                            onPress={() => props.onSpeed(s)}
+                            style={({ pressed }) => [
+                              styles.speed,
+                              current && { backgroundColor: accent },
+                              pressed && !current && styles.optionPressed,
+                            ]}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: current }}
+                          >
+                            <Text
+                              style={[styles.speedText, current && styles.speedTextCurrent]}
+                              numberOfLines={1}
+                              adjustsFontSizeToFit
+                              minimumFontScale={0.85}
+                            >
+                              {text.speed[s]}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                    <Option
+                      testID={`voice-option-${side}-system`}
+                      label={text.systemVoice}
+                      current={!voice}
+                      {...option}
+                      onPress={() => props.onVoice(undefined)}
+                    />
+                    {voices.map((v) => (
+                      <Option
+                        key={v.id}
+                        testID={`voice-option-${side}-${v.id}`}
+                        label={v.name}
+                        detail={v.enhanced ? text.enhanced : undefined}
+                        current={v.id === voice}
+                        {...option}
+                        onPress={() => props.onVoice(v.id)}
+                      />
+                    ))}
+                  </>
+                )}
+              </ScrollView>
+            </View>
           </View>
         </>
       )}
@@ -250,11 +254,9 @@ const styles = StyleSheet.create({
   message: { fontSize: 20, lineHeight: 28, fontWeight: '600', color: WARN, letterSpacing: 0 },
   micArea: { alignItems: 'center', gap: 12 },
   hint: { fontSize: 15, color: MUTED, fontWeight: '500' },
+  menuFrame: { position: 'absolute', top: 62, left: 24, right: 24, alignItems: 'flex-start' },
   menu: {
-    position: 'absolute',
-    top: 62,
-    left: 24,
-    width: 320,
+    minWidth: 240,
     maxWidth: '100%',
     paddingVertical: 6,
     borderRadius: 16,
@@ -265,6 +267,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 8,
   },
+  // Wide enough for three speed buttons side by side.
+  voiceMenu: { width: 320 },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
