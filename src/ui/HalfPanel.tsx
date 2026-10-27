@@ -139,7 +139,13 @@ export function HalfPanel(props: Props) {
                           accessibilityRole="button"
                           accessibilityState={{ selected: current }}
                         >
-                          <Text style={[styles.speedText, current && styles.speedTextCurrent]}>{text.speed[s]}</Text>
+                          <Text
+                            style={[styles.speedText, current && styles.speedTextCurrent]}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                          >
+                            {text.speed[s]}
+                          </Text>
                         </Pressable>
                       );
                     })}
@@ -248,7 +254,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 62,
     left: 24,
-    minWidth: 240,
+    width: 320,
+    maxWidth: '100%',
     paddingVertical: 6,
     borderRadius: 16,
     backgroundColor: '#fff',
@@ -269,7 +276,7 @@ const styles = StyleSheet.create({
   },
   menuScroll: { maxHeight: 300 },
   speeds: { flexDirection: 'row', gap: 4, margin: 6, marginBottom: 8, padding: 4, borderRadius: 12, backgroundColor: '#ECEDF3' },
-  speed: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 9, paddingHorizontal: 6 },
+  speed: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 9, paddingHorizontal: 10 },
   speedText: { fontSize: 15, fontWeight: '600', color: INK },
   speedTextCurrent: { color: '#fff' },
   optionPressed: { backgroundColor: '#ECEDF3' },
